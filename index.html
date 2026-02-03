@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combat d'Arguments - Fusion</title>
+    
+    <!-- Import de la police Intro -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <!-- ========================================== -->
+    <!-- STYLE INTRO (ISOLÉ pour ne pas polluer)    -->
+    <!-- ========================================== -->
+    <style>
+        /* Reset global minimal pour éviter tout débordement */
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; height: 100vh; width: 100vw; overflow: hidden; }
+
+        /* Styles spécifiques au mode Intro */
+        body.intro-mode {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* TOUT le style ci-dessous est scoped dans #intro-wrapper pour éviter les conflits */
+        #intro-wrapper #game-stage {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 1024px;
+            max-height: 768px;
+            background: #000;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #intro-wrapper .game-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.9;
+            z-index: 0;
+        }
+
+        #intro-wrapper .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        #intro-wrapper .vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.8) 90%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        #intro-wrapper .ui-layer {
+            position: relative;
+            z-index: 10;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        #intro-wrapper .game-title {
+            font-size: clamp(20px, 5vw, 48px);
+            text-align: center;
+            text-shadow: 4px 4px 0 #ff4444;
+            margin-bottom: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border: 4px solid #ffffff;
+            transform: rotate(-2deg);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        #intro-wrapper .game-clock {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 14px;
+            color: #ffcc00;
+            background: #000;
+            padding: 5px 10px;
+            border: 2px solid #ffcc00;
+        }
+
+        #intro-wrapper .menu-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        #intro-wrapper .retro-btn {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #ffffff;
+            color: #000;
+            border: 4px solid #000;
+            padding: 15px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 4px 4px 0px #000;
+            transition: transform 0.1s, box-shadow 0.1s;
+            text-transform: uppercase;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        #intro-wrapper .retro-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px #000;
+            background-color: #ffcc00;
+        }
+
+        #intro-wrapper .retro-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 0px 0px 0px #000;
+        }
+
+        #intro-wrapper .btn-secondary {
+            background-color: #444;
+            color: #fff;
+        }
+
+        #intro-wrapper dialog {
+            background-color: #222;
+            color: #fff;
+            border: 4px solid #ffcc00;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 0 100vmax rgba(0,0,0,0.8);
+            font-size: 12px;
+            line-height: 1.8;
+            z-index: 1000;
+        }
+
+        #intro-wrapper dialog::backdrop {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        #intro-wrapper dialog h2 {
+            color: #ffcc00;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 2px dashed #555;
+            padding-bottom: 10px;
+        }
+
+        #intro-wrapper dialog ul { margin-left: 20px; margin-bottom: 20px; text-align: left; }
+        #intro-wrapper dialog li { margin-bottom: 10px; }
+
+        @keyframes float {
+            0%, 100% { transform: rotate(-2deg) translateY(0); }
+            50% { transform: rotate(-2deg) translateY(-10px); }
+        }
+
+        #intro-wrapper #loading-screen {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 20;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        #intro-wrapper .loader {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #ffcc00;
+            border-top: 4px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+
+    <!-- ========================================== -->
+    <!-- STYLE SFTEST16 (COPIÉ COLLÉ PUR)           -->
+    <!-- ========================================== -->
+    <style>
+        /* --- STYLE ORIGINAL SFTEST16 --- */
+        :root {
+            --primary: #f0c419;
+            --secondary: #2c3e50;
+            --accent: #e74c3c;
+            --bg-dark: #1a1a1a;
+            --text-light: #ecf0f1;
+            --font-retro: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            font-family: var(--font-retro);
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        .scene {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: opacity 0.5s ease;
+            padding: 20px;
+        }
+
+        .scene.active {
+            display: flex;
+            z-index: 10;
+        }
+
+        #scene-start {
+            background: linear-gradient(135deg, #000000 0%, #2c3e50 100%);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3rem;
+            color: var(--primary);
+            text-transform: uppercase;
+            text-shadow: 4px 4px 0px var(--accent);
+            margin-bottom: 1rem;
+            animation: pulse 2s infinite;
+        }
+
+        .subtitle { font-size: 1.2rem; margin-bottom: 3rem; color: #bdc3c7; }
+
+        .btn-main {
+            background-color: var(--accent);
+            color: white;
+            border: 4px solid white;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: transform 0.1s, box-shadow 0.1s;
+            box-shadow: 0 6px 0 #c0392b;
+            margin-top: 20px;
+        }
+
+        .btn-main:active { transform: translateY(6px); box-shadow: 0 0 0 #c0392b; }
+
+        #scene-select { background-color: #222; }
+        .select-container { display: flex; gap: 40px; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
+
+        .card {
+            background: #34495e;
+            border: 4px solid var(--primary);
+            border-radius: 10px;
+            width: 300px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .card:hover { transform: scale(1.05); background: #3e5871; }
+        .card img { width: 100%; height: 250px; object-fit: cover; border-bottom: 2px solid #fff; margin-bottom: 15px; image-rendering: pixelated; }
+        .card h2 { color: var(--primary); margin-bottom: 10px; }
+        .stats { margin-top: 15px; text-align: left; font-size: 0.8rem; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+
+        #scene-intro {
+            background-color: #000;
+            position: relative;
+        }
+
+        .intro-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 20;
+            max-width: 800px;
+        }
+
+        .boss-img {
+            width: 300px;
+            height: 300px;
+            object-fit: contain;
+            border: 5px solid var(--accent);
+            box-shadow: 0 0 30px var(--accent);
+            margin-bottom: 20px;
+            image-rendering: pixelated;
+        }
+
+        .speech-bubble {
+            background: #fff;
+            color: #000;
+            padding: 20px;
+            border-radius: 20px;
+            font-size: 1.5rem;
+            position: relative;
+            text-align: center;
+            max-width: 90%;
+            border: 4px solid #000;
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 0 20px 20px 20px;
+            border-style: solid;
+            border-color: #000 transparent;
+            display: block;
+            width: 0;
+        }
+
+        .blink-text {
+            display: inline-block;
+            margin-top: 20px;
+            color: var(--primary);
+            font-size: 1rem;
+            animation: blink 1s infinite;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        #scene-fight {
+            background: url('https://z-cdn-media.chatglm.cn/files/c2e7f091-ff94-4a2b-b7df-766d23ef03dd.png?auth_key=1869967829-54268ad5ba9b4f4a874d0369114bc497-0-c8537facc2d1170dbaea9c32a46d9290') no-repeat center center;
+            background-size: cover;
+            justify-content: flex-start;
+        }
+        
+        #scene-fight::before { 
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 1; 
+        }
+        
+        .ui-layer { position: relative; z-index: 20; width: 100%; max-width: 1000px; margin-top: 20px; }
+        .hud-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .health-container { width: 45%; background: #000; border: 2px solid #fff; padding: 5px; position: relative; }
+        .health-bar { height: 30px; background: var(--accent); width: 100%; transition: width 0.2s; }
+        .health-bar.low { background: #e67e22; animation: flash 0.5s infinite; }
+        .player-name { position: absolute; top: -25px; left: 0; font-weight: bold; font-size: 1.2rem; text-shadow: 2px 2px 0 #000; }
+        #p2-name { left: auto; right: 0; }
+        .timer-box { background: #000; border: 2px solid var(--primary); color: var(--primary); width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; }
+
+        .arena { 
+            position: relative; 
+            flex-grow: 1; 
+            width: 100%; 
+            max-width: 100%; 
+            display: block; 
+            z-index: 20; 
+        }
+        
+        .fighter { width: 200px; height: 250px; position: absolute; bottom: 20px; }
+        
+        .fighter-sprite {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            position: absolute;
+            bottom: 0;
+            transition: filter 0.1s;
+        }
+
+        .fighter.hit { filter: brightness(2) sepia(1) hue-rotate(-50deg) saturate(5); transform: scale(1.1); }
+
+        /* --- MODAL CONVERSATION --- */
+        #quiz-modal {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: auto;
+            max-width: none; /* Prend toute la largeur */
+            background: transparent; /* Fond transparent pour laisser voir le perso si besoin */
+            border: none;
+            border-radius: 0;
+            z-index: 50;
+            display: none;
+            flex-direction: row; /* Layout ligne */
+            justify-content: space-between; /* Espace entre les deux boîtes */
+            padding: 20px 5%; /* Marge latérale */
+            box-shadow: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            align-items: flex-end; /* Aligne en bas */
+        }
+
+        #quiz-modal.visible { display: flex; opacity: 1; }
+
+        /* --- COLONNE GAUCHE (JOUEUR) --- */
+        .dialogue-player {
+            flex: 0 0 auto;
+            width: 45%; /* Prend presque la moitié gauche */
+            min-height: 250px; /* Taille conséquente comme le carré rouge */
+            background: rgba(0,0,0,0.9);
+            border: 5px solid var(--primary); /* Bordure Jaune Joueur */
+            border-radius: 15px;
+            display: none; /* Caché par défaut */
+            flex-direction: column;
+            padding: 30px;
+            margin-right: auto; /* Force à rester à gauche */
+            box-shadow: 10px 10px 0px rgba(0,0,0,0.5);
+            max-width: none;
+            animation: slideInLeft 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        /* Quand la fenêtre Joueur est visible */
+        .dialogue-player.visible {
+            display: flex;
+        }
+
+        /* --- COLONNE DROITE (BISON) --- */
+        .dialogue-bison {
+            flex: 0 0 auto;
+            width: 45%; /* Prend presque la moitié droite */
+            min-height: 250px;
+            background: rgba(0,0,0,0.9);
+            border: 5px solid var(--accent); /* Bordure Rouge Boss */
+            border-radius: 15px;
+            display: flex; /* Visible par défaut */
+            flex-direction: column;
+            padding: 30px;
+            margin-left: auto; /* Force à rester à droite */
+            box-shadow: -10px 10px 0px rgba(0,0,0,0.5);
+            max-width: none;
+            animation: slideInRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        /* Quand la fenêtre Bison est cachée */
+        .dialogue-bison.hidden {
+            display: none;
+        }
+
+        .dialogue-avatar {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            image-rendering: pixelated;
+            border: 3px solid #fff;
+            background: #000;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 0 10px rgba(255,255,255,0.2);
+            align-self: flex-start;
+        }
+
+        .dialogue-bubble {
+            background: transparent;
+            color: #fff;
+            padding: 0;
+            border-radius: 0;
+            font-weight: bold;
+            text-align: left;
+            font-size: 1.1rem;
+            line-height: 1.5;
+            flex-grow: 1;
+            border: none;
+        }
+
+        .q-title {
+            color: var(--accent);
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            font-weight: 900;
+            display: block;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 5px;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        .q-footer {
+            color: #fff;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            font-weight: bold;
+            display: block;
+            margin-top: 15px;
+            text-align: right;
+            text-shadow: 2px 2px 0px var(--primary);
+        }
+
+        .a-prefix {
+            color: var(--primary);
+            font-weight: bold;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .btn-ok {
+            margin-top: 20px;
+            align-self: flex-end;
+            background: var(--accent);
+            color: white;
+            border: 2px solid white;
+            padding: 10px 30px;
+            font-size: 1rem;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 4px 0 #c0392b;
+        }
+        .btn-ok:active { transform: translateY(4px); box-shadow: none; }
+
+        .dialogue-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .dialogue-option-btn {
+            background: var(--secondary);
+            color: #fff;
+            border: 2px solid var(--primary);
+            padding: 15px;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1rem;
+            border-radius: 5px;
+            transition: all 0.2s;
+            position: relative;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .dialogue-option-btn:hover {
+            background: #34495e;
+            transform: translateX(5px);
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        .dialogue-option-btn::before {
+            content: '>';
+            color: var(--primary);
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .prompt-text {
+            color: var(--primary);
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: left;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            text-shadow: 2px 2px 0px #000;
+            display: none;
+        }
+
+        #scene-gameover { background: rgba(0,0,0,0.95); z-index: 100; }
+        .result-title { font-size: 4rem; margin-bottom: 20px; text-transform: uppercase; }
+        .win { color: var(--primary); } .lose { color: var(--accent); }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        @keyframes fadeInLeft { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        
+        @keyframes slideInLeft { from { opacity: 0; transform: translateX(-100px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(100px); } to { opacity: 1; transform: translateX(0); } }
+
+        @keyframes punch-anim { 0% { transform: translateX(0); } 50% { transform: translateX(60px) scale(1.1); } 100% { transform: translateX(0); } }
+        @keyframes punch-enemy { 0% { transform: translateX(0); } 50% { transform: translateX(-60px) scale(1.1); } 100% { transform: translateX(0); } }
+        @keyframes float-up { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
+        @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        @media (max-width: 768px) {
+            #quiz-modal { flex-direction: column; bottom: 0; width: 100%; padding: 10px; gap: 10px; align-items: center; background: rgba(0,0,0,0.95); }
+            .dialogue-bison, .dialogue-player { width: 100%; margin: 0; min-height: auto; max-width: none; padding: 15px; order: 2; }
+            .dialogue-player { order: 1; }
+            .dialogue-avatar { width: 50px; height: 50px; }
+            h1 { font-size: 2rem; } .fighter { width: 120px; height: 150px; }
+            .select-container { flex-direction: column; align-items: center; } .card { width: 100%; max-width: 320px; }
+            .boss-img { width: 200px; height: 200px; }
+            .speech-bubble { font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<!-- On ajoute la classe intro-mode au body par défaut -->
+<body class="intro-mode">
+
+    <!-- ========================================== -->
+    <!-- PARTIE INTRO                                -->
+    <!-- ========================================== -->
+    <div id="intro-wrapper">
+        <div id="game-stage">
+            <!-- Image fournie -->
+            <img src="https://z-cdn-media.chatglm.cn/files/ed911235-7438-4ecf-8c77-bf606a253ed7.png?auth_key=1870099399-149353d46a104b6d8300b020194cdb52-0-0637817f47e1e968ddce40768dbd39a4" alt="Combat d'Arguments Office Scene" class="game-background">
+            
+            <div class="scanlines"></div>
+            <div class="vignette"></div>
+
+            <main class="ui-layer">
+                <div class="game-clock" id="clock">08:515</div>
+                
+                <div id="intro-content">
+                    <h1 class="game-title">COMBAT<br>D'ARGUMENTS</h1>
+                    
+                    <div class="menu-container">
+                        <button class="retro-btn" id="btn-start">Démarrer</button>
+                        <button class="retro-btn btn-secondary" id="btn-instructions">Consigne</button>
+                    </div>
+                </div>
+            </main>
+
+            <div id="loading-screen">
+                <div class="loader"></div>
+                <p style="margin-top: 20px; color: #ffcc00;">INITIALISATION DU DÉBAT...</p>
+            </div>
+
+            <!-- Modal de consignes avec le texte demandé -->
+            <dialog id="modal-instructions">
+                <h2>🎯 L'Objectif</h2>
+                <p>Vous êtes face à M. Bison, un recruteur redoutable. Votre mission est de transformer cet entretien en victoire en démontrant vos compétences professionnelles (Soft Skills et Hard Skills) à travers vos réponses. Chaque bonne réponse affaiblit le recruteur, mais chaque erreur vous fait perdre des points de vie !</p>
+                <br>
+                <h3>🕹️ Comment jouer ?</h3>
+                <ol style="margin-left: 20px; text-align: left; margin-bottom: 20px;">
+                    <li style="margin-bottom:10px;"><strong>Choisissez votre profil :</strong></li>
+                    <ul style="margin-left: 20px;">
+                        <li>RYU (Le Technique) : Expert en logique et en code.</li>
+                        <li>CHUN-LI (L'Organisée) : Experte en gestion et relations humaines.</li>
+                    </ul>
+                    <li style="margin-bottom:10px;"><strong>Le déroulement du "combat" :</strong></li>
+                    <ul style="margin-left: 20px;">
+                        <li><strong>Écoutez la situation</strong> : Le recruteur vous présente un scénario professionnel concret.</li>
+                        <li><strong>Analysez la question</strong> : Une fois la situation exposée, cliquez sur "OK, J'AI COMPRIS" pour passer aux options.</li>
+                        <li><strong>Mobilisez la bonne compétence</strong> : Quatre options s'offrent à vous. Une seule correspond à la réaction attendue.</li>
+                    </ul>
+                    <li style="margin-bottom:10px;"><strong>Les règles du duel :</strong></li>
+                    <ul style="margin-left: 20px;">
+                        <li>✅ <strong>Bonne réponse</strong> : Vous lancez une attaque ! La barre de santé du recruteur diminue.</li>
+                        <li>❌ <strong>Mauvaise réponse</strong> : Le recruteur contre-attaque ! Votre barre de santé diminue.</li>
+                    </ul>
+                </ol>
+                <h3>🏆 Conditions de victoire</h3>
+                <ul style="margin-left: 20px;">
+                    <li><strong>EMBAUCHÉ !</strong> : Vous gagnez si la barre de santé du recruteur tombe à 0% ou si vous avez plus de vie que lui à la fin.</li>
+                    <li><strong>REFUSÉ...</strong> : Si votre barre de santé tombe à 0%, l'entretien s'arrête.</li>
+                </ul>
+                <p style="margin-top: 10px; text-align: center; font-style: italic;">Conseil de pro : Lisez attentivement les situations. Le métier demande de la rigueur, de l'empathie et de la proactivité !</p>
+                <br>
+                <div style="text-align: center;">
+                    <button class="retro-btn" id="btn-close-modal">J'AI COMPRIS</button>
+                </div>
+            </dialog>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- PARTIE SFTEST16 (Cachée par défaut)        -->
+    <!-- ========================================== -->
+    <div id="sftest-wrapper" style="display: none; width: 100%; height: 100%;">
+        <!-- SCÈNE 1: DÉMARRAGE -->
+        <section id="scene-start" class="scene active">
+            <h1>Entretien d'Embauche</h1>
+            <p class="subtitle">La conversation décisive</p>
+            <button class="btn-main" onclick="game.goToSelection()">COMMENCER</button>
+        </section>
+
+        <!-- SCÈNE 2: SÉLECTION -->
+        <section id="scene-select" class="scene">
+            <h2>Choisissez votre Profil</h2>
+            <div class="select-container">
+                <div class="card" onclick="game.selectCharacter('ryu')">
+                    <img src="https://z-cdn-media.chatglm.cn/files/64df10ed-bfee-46f3-9ba7-9afb5dd53412.png?auth_key=1869964979-a6b6ab86e96f40fcb076af74d40246fb-0-b04dd00214fbe28e47fbad21ee7889df" alt="Ryu">
+                    <h2>RYU - Le Technique</h2>
+                    <div class="stats"><div class="stat-row"><span>Spécialité:</span> <span>Logique & Code</span></div></div>
+                </div>
+                <div class="card" onclick="game.selectCharacter('chunli')">
+                    <img src="https://z-cdn-media.chatglm.cn/files/480428e3-6a73-4b15-879d-235f7148a53d.jpg?auth_key=1869964979-f0ee6f8f8e924bb990e6343e515891bb-0-7f79440d09e7610ed9ebb270a4d6e6d2" alt="Chun Li">
+                    <h2>CHUN-LI - L'Organisée</h2>
+                    <div class="stats"><div class="stat-row"><span>Spécialité:</span> <span>Gestion & Relation</span></div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCÈNE 2.5: INTRODUCTION (BOSS) -->
+        <section id="scene-intro" class="scene">
+            <div class="intro-container">
+                <img src="https://z-cdn-media.chatglm.cn/files/edac88ac-4e5e-40d0-9147-bfd3b165b636.jpg?auth_key=1869967210-fa3ac59bed544eeaaf0e893b7d66ebc1-0-294fe65c5d4cab4ca17495aab3cde35c" alt="Le Recruteur" class="boss-img">
+                
+                <div class="speech-bubble">
+                    <span id="intro-text">Chargement...</span>
+                    <br>
+                    <span class="blink-text" onclick="game.startFight()">ENTRER DANS LE BUREAU ></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCÈNE 3: COMBAT (CONVERSATION) -->
+        <section id="scene-fight" class="scene">
+            <div class="ui-layer">
+                <div class="hud-top">
+                    <div class="health-container">
+                        <div class="player-name" id="p1-name-display">CANDIDAT</div>
+                        <div class="health-bar" id="p1-health" style="width: 100%;"></div>
+                    </div>
+                    <div class="timer-box" id="timer">Q1</div>
+                    <div class="health-container">
+                        <div class="player-name" id="p2-name-display">RECRUTEUR</div>
+                        <div class="health-bar" id="p2-health" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="arena">
+                <div id="p1-bubble" class="argument-bubble" style="left: 5%;">Excellente réponse !</div>
+                <div id="p2-bubble" class="argument-bubble" style="right: 5%;">Question suivante !</div>
+                
+                <div class="fighter" id="p1-fighter" style="left: 0%;">
+                    <img id="p1-sprite" class="fighter-sprite" src="" alt="Player">
+                </div>
+                
+                <div class="fighter" id="p2-fighter" style="right: 0%;">
+                    <img id="p2-sprite" class="fighter-sprite" src="" alt="Boss">
+                </div>
+            </div>
+        </section>
+
+        <!-- MODAL DE CONVERSATION -->
+        <div id="quiz-modal">
+            <div class="dialogue-bison" id="dialogue-bison">
+                <img id="modal-bison-img" src="" alt="Recruteur" class="dialogue-avatar">
+                <div class="dialogue-bubble">
+                    <span id="modal-question-text">Question...</span>
+                </div>
+                <button id="btn-ok" class="btn-ok" onclick="game.acknowledgeQuestion()">OK, J'AI COMPRIS</button>
+            </div>
+            
+            <div class="dialogue-player" id="dialogue-player">
+                <img id="modal-player-img" src="" alt="Candidat" class="dialogue-avatar">
+                <div class="prompt-text">Comment répondez-vous ?</div>
+                <div class="dialogue-options" id="modal-options"></div>
+            </div>
+        </div>
+
+        <!-- SCÈNE 4: GAME OVER -->
+        <section id="scene-gameover" class="scene">
+            <h1 id="result-title" class="result-title">EMBAUCHÉ !</h1>
+            <p id="result-message" style="font-size: 1.5rem; margin-bottom: 30px;"></p>
+            <button class="btn-main" onclick="game.reset()">REJOUER</button>
+            <br>
+            <button class="btn-main" onclick="window.open('https://www.google.com', '_blank')">ACCÉDEZ AU COURS</button>
+        </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SCRIPT INTRO (Navigation uniquement)       -->
+    <!-- ========================================== -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnStart = document.getElementById('btn-start');
+            const btnInstructions = document.getElementById('btn-instructions');
+            const modal = document.getElementById('modal-instructions');
+            const btnCloseModal = document.getElementById('btn-close-modal');
+            const loadingScreen = document.getElementById('loading-screen');
+            const introContent = document.getElementById('intro-content');
+            const introWrapper = document.getElementById('intro-wrapper');
+            const sftestWrapper = document.getElementById('sftest-wrapper');
+            const clockElement = document.getElementById('clock');
+
+            // Horloge Glitch
+            setInterval(() => {
+                const glitch = Math.random() > 0.8;
+                if(glitch) {
+                    clockElement.style.opacity = 0.5;
+                    clockElement.innerText = "08:51X";
+                } else {
+                    clockElement.style.opacity = 1;
+                    clockElement.innerText = "08:515";
+                }
+            }, 500);
+
+            // Gestion Modale
+            btnInstructions.addEventListener('click', () => {
+                modal.showModal();
+                playSound('click');
+            });
+
+            btnCloseModal.addEventListener('click', () => {
+                modal.close();
+                playSound('click');
+            });
+
+            modal.addEventListener('click', (e) => {
+                const rect = modal.getBoundingClientRect();
+                const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height
+                    && rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+                if (!isInDialog) {
+                    modal.close();
+                }
+            });
+
+            // Lancement du jeu (Passage à SFtest)
+            btnStart.addEventListener('click', () => {
+                playSound('start');
+                launchGame();
+            });
+
+            function launchGame() {
+                introContent.style.display = 'none';
+                loadingScreen.style.display = 'flex';
+
+                setTimeout(() => {
+                    // Masquer l'intro
+                    document.body.classList.remove('intro-mode'); // Retire le style intro du body
+                    introWrapper.style.display = 'none';
+                    
+                    // Afficher le jeu (Le style CSS SFtest s'applique maintenant au body car la classe intro-mode est partie)
+                    sftestWrapper.style.display = 'block';
+                    
+                    // Le jeu SFtest gère sa propre initialisation via son script
+                }, 2000);
+            }
+
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            function playSound(type) {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                if (type === 'click') {
+                    oscillator.type = 'square';
+                    oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.1);
+                    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                    oscillator.start();
+                    oscillator.stop(audioCtx.currentTime + 0.1);
+                } else if (type === 'start') {
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(220, audioCtx.currentTime);
+                    oscillator.frequency.linearRampToValueAtTime(880, audioCtx.currentTime + 0.3);
+                    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    oscillator.start();
+                    oscillator.stop(audioCtx.currentTime + 0.3);
+                }
+            }
+        });
+    </script>
+
+    <!-- ========================================== -->
+    <!-- SCRIPT SFTEST16 (COPIÉ COLLÉ PUR)          -->
+    <!-- ========================================== -->
+    <script>
+        const CHARACTERS = {
+            ryu: { 
+                name: "RYU", 
+                img: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Z5eXZ5eXZ5eXZ5eXZ5eXZ5eXZ5eXZ5eXZ5eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26tOZ42Mg6pbPUPKS/giphy.gif", 
+                portrait: "https://z-cdn-media.chatglm.cn/files/c201956b-3196-4455-bd2d-c0490515ead6.png?auth_key=1870101551-fae805e22d7042a68c55fe9553224c29-0-0bf4bc7bfdcea652772d4739f6cf9698", 
+                speed:3 
+            },
+            chunli: { 
+                name: "CHUN-LI", 
+                img: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Z5eXZ5eXZ5eXZ5eXZ5eXZ5eXZ5eXZ5eXZ5eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l3q2zbskZp2j8wniE/giphy.gif", 
+                portrait: "https://z-cdn-media.chatglm.cn/files/d8be72ae-3834-434c-a198-013898289470.jpg?auth_key=1870101551-a8fae5d8063b424aad16c045d3b0cff9-0-298eb4a77f769fb4429c0dc2c3b248c3", 
+                speed:4 
+            },
+            bison: { 
+                name: "M. BISON", 
+                img: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Z5eXZ5eXZ5eXZ5eXZ5eXZ5eXZ5eXZ5eXZ5eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKoWXm3okO1kgHC/giphy.gif", 
+                portrait: "https://z-cdn-media.chatglm.cn/files/87def987-1645-45ef-9f7f-6c0460f33e37.jpg?auth_key=1870101551-b3d2ab9f1a5d4b5397dacaebe89e4f87-0-ad0d7769a3c367dccd7173f210afc856", 
+                speed: 3.5 
+            }
+        };
+
+        const QUESTIONS = [
+            {
+                text: "Tu es agent(e) de sécurité. Une alarme intrusion se déclenche à 03h10. Tu consultes immédiatement le plan de zone, vérifie les caméras et envoie un binôme pour effectuer la levée de doute.",
+                options: [
+                    "Tenue correcte et posture professionnelle",
+                    "Connaissance des rondes, contrôles d’accès et gestion des alarmes",
+                    "Désamorçage des tensions",
+                    "Respect des horaires"
+                ],
+                correct: 1
+            },
+            {
+                text: "Vous êtes agent(e) à l’accueil. Vous remarquez un individu qui observe les badges des salariés et tente de suivre quelqu’un dans une zone réservée.",
+                options: [
+                    "Vigilance constante et attention aux détails",
+                    "Coordination avec le chef d’équipe",
+                    "Rédaction de rapports",
+                    "Respect des horaires"
+                ],
+                correct: 0
+            },
+            {
+                text: "Vous êtes agent(e) en poste. Deux visiteurs commencent à s’insulter. Vous intervenez calmement et les séparez.",
+                options: [
+                    "Savoir désamorcer les tensions",
+                    "Discipline et rigueur",
+                    "Utilisation des radios",
+                    "Gestion des alarmes"
+                ],
+                correct: 0
+            },
+            {
+                text: "Vous êtes agent(e). Vous arrivez 20 minutes en avance, vérifiez votre matériel et prenez votre poste à l’heure.",
+                options: [
+                    "Respect des horaires et fiabilité",
+                    "Vigilance",
+                    "Désamorçage",
+                    "Coordination"
+                ],
+                correct: 0
+            },
+            {
+                text: "Vous êtes agent(e) au contrôle d’accès. Un salarié présente un badge expiré. Vous appliquez strictement la procédure.",
+                options: [
+                    "Discipline et rigueur",
+                    "Désamorçage",
+                    "Utilisation des outils numériques",
+                    "Coordination"
+                ],
+                correct: 0
+            },
+            {
+                text: "Vous êtes en ronde extérieure. Vous trouvez une porte coupe-feu entrouverte et sécurisez immédiatement la zone.",
+                options: [
+                    "Connaissance des rondes et détection d’anomalies",
+                    "Tenue correcte",
+                    "Coordination",
+                    "Rédaction de rapports"
+                ],
+                correct: 0
+            },
+            {
+                text: "Vous êtes agent(e). Un salarié paniqué vous appelle pour un bruit suspect. Vous restez calme et réalisez une levée de doute méthodique.",
+                options: [
+                    "Agir rapidement sans céder à la panique",
+                    "Contrôle d’accès",
+                    "Tenue professionnelle",
+                    "Coordination"
+                ],
+                correct: 0
+            },
+            {
+                text: "Vous surveillez les caméras. Vous repérez un individu qui tourne autour d’un véhicule depuis plusieurs minutes.",
+                options: [
+                    "Utilisation de la vidéosurveillance",
+                    "Désamorçage",
+                    "Rigueur",
+                    "Respect des horaires"
+                ],
+                correct: 0
+            },
+            {
+                text: "Vous êtes agent(e). Une alarme incendie se déclenche. Vous appliquez la procédure : évacuation, vérification du tableau, appel des secours.",
+                options: [
+                    "Connaissance des procédures d’alarme",
+                    "Tenue correcte",
+                    "Coordination",
+                    "Vigilance"
+                ],
+                correct: 0
+            },
+            {
+                text: "Vous accueillez un VIP. Vous adoptez une posture impeccable et un langage professionnel.",
+                options: [
+                    "Tenue correcte et attitude professionnelle",
+                    "Gestion des alarmes",
+                    "Ronde technique",
+                    "Rédaction de rapports"
+                ],
+                correct: 0
+            }
+        ];
+
+        const game = {
+            state: 'START',
+            player: null,
+            enemy: null,
+            currentQuestionIndex: 0,
+            interval: null,
+            
+            init: function() { },
+            showScreen: function(id) {
+                document.querySelectorAll('.scene').forEach(e => e.classList.remove('active'));
+                document.getElementById(id).classList.add('active');
+            },
+            goToSelection: function() { this.showScreen('scene-select'); },
+
+            selectCharacter: function(charId) {
+                this.player = { ...CHARACTERS[charId], hp: 100 };
+                this.enemy = { ...CHARACTERS['bison'], hp: 100 }; 
+
+                document.getElementById('p1-name-display').innerText = this.player.name;
+                document.getElementById('p2-name-display').innerText = this.enemy.name;
+
+                document.getElementById('p1-sprite').src = this.player.img;
+                document.getElementById('p2-sprite').src = this.enemy.img;
+
+                document.getElementById('modal-player-img').src = this.player.portrait;
+
+                const suffix = charId === 'chunli' ? "prête" : "prêt";
+                const message = `Je vais te recevoir en entretien, j'espère que tu es ${suffix}.`;
+                document.getElementById('intro-text').innerText = message;
+                
+                this.showScreen('scene-intro');
+            },
+
+            startFight: function() {
+                this.state = 'FIGHT';
+                this.player.hp = 100; this.enemy.hp = 100;
+                this.currentQuestionIndex = 0;
+                
+                this.updateHealthUI();
+                this.showScreen('scene-fight');
+
+                setTimeout(() => this.showQuestion(), 1000);
+            },
+
+            showQuestion: function() {
+                if (this.currentQuestionIndex >= QUESTIONS.length) {
+                    this.endGame('CHECK_HP');
+                    return;
+                }
+
+                const qData = QUESTIONS[this.currentQuestionIndex];
+                const modal = document.getElementById('quiz-modal');
+                const optionsDiv = document.getElementById('modal-options');
+                
+                modal.classList.remove('visible');
+                
+                const bisonSection = document.getElementById('dialogue-bison');
+                const playerSection = document.getElementById('dialogue-player');
+                
+                bisonSection.classList.remove('hidden');
+                playerSection.classList.remove('visible');
+
+                const titleStart = "<span class='q-title'>Voici la situation</span>";
+                const titleEnd = "<span class='q-footer'>Quelle compétence mobilisez-vous ?</span>";
+                document.getElementById('modal-question-text').innerHTML = titleStart + qData.text + titleEnd;
+                
+                document.getElementById('timer').innerText = `Q${this.currentQuestionIndex + 1}`;
+                document.getElementById('modal-bison-img').src = this.enemy.portrait;
+                
+                optionsDiv.innerHTML = '';
+
+                modal.classList.add('visible');
+            },
+
+            acknowledgeQuestion: function() {
+                const modal = document.getElementById('quiz-modal');
+                const qData = QUESTIONS[this.currentQuestionIndex];
+                const optionsDiv = document.getElementById('modal-options');
+
+                const bisonSection = document.getElementById('dialogue-bison');
+                bisonSection.classList.add('hidden');
+
+                setTimeout(() => {
+                    const playerSection = document.getElementById('dialogue-player');
+                    playerSection.classList.add('visible');
+
+                    const responsePrefix = "Je mobilise la compétence : ";
+
+                    qData.options.forEach((opt, index) => {
+                        const btn = document.createElement('button');
+                        btn.className = 'dialogue-option-btn';
+                        btn.innerHTML = `<span class='a-prefix'>${responsePrefix}</span> ${opt}`;
+                        btn.onclick = () => this.checkAnswer(index);
+                        optionsDiv.appendChild(btn);
+                    });
+                }, 200);
+            },
+
+            checkAnswer: function(selectedIndex) {
+                const modal = document.getElementById('quiz-modal');
+                const qData = QUESTIONS[this.currentQuestionIndex];
+                const isCorrect = (selectedIndex === qData.correct);
+
+                modal.classList.remove('visible');
+
+                if (isCorrect) {
+                    this.performAttack(true); 
+                    this.enemy.hp -= 10; 
+                } else {
+                    this.performAttack(false);
+                    this.player.hp -= 10; 
+                }
+
+                this.player.hp = Math.max(0, this.player.hp);
+                this.enemy.hp = Math.max(0, this.enemy.hp);
+
+                this.updateHealthUI();
+                this.currentQuestionIndex++;
+
+                setTimeout(() => {
+                    if (this.currentQuestionIndex >= QUESTIONS.length) {
+                        this.endGame('CHECK_HP');
+                    } else {
+                        this.showQuestion();
+                    }
+                }, 1500);
+            },
+
+            performAttack: function(isPlayerAttacking) {
+                const attackerId = isPlayerAttacking ? 'p1-fighter' : 'p2-fighter';
+                const defenderId = isPlayerAttacking ? 'p2-fighter' : 'p1-fighter';
+                
+                const sprite = document.querySelector(`#${attackerId} > .fighter-sprite`);
+                if(sprite) {
+                    sprite.style.animation = isPlayerAttacking ? 'punch-anim 0.2s forwards' : 'punch-enemy 0.2s forwards';
+                }
+
+                const bubbleId = isPlayerAttacking ? 'p1-bubble' : 'p2-bubble';
+                const bubble = document.getElementById(bubbleId);
+                bubble.innerText = isPlayerAttacking ? "Bonne réponse !" : "Mauvaise réponse...";
+                bubble.classList.remove('active');
+                void bubble.offsetWidth; bubble.classList.add('active');
+
+                setTimeout(() => {
+                    const resetSprite = document.querySelector(`#${attackerId} > .fighter-sprite`);
+                    if(resetSprite) resetSprite.style.animation = '';
+                }, 200);
+            },
+
+            updateHealthUI: function() {
+                document.getElementById('p1-health').style.width = this.player.hp + '%';
+                document.getElementById('p2-health').style.width = this.enemy.hp + '%';
+                document.getElementById('p1-health').classList.toggle('low', this.player.hp < 30);
+                document.getElementById('p2-health').classList.toggle('low', this.enemy.hp < 30);
+            },
+
+            endGame: function(result) {
+                this.state = 'END';
+                const title = document.getElementById('result-title');
+                const msg = document.getElementById('result-message');
+                
+                if (result === 'CHECK_HP') {
+                    if (this.player.hp > this.enemy.hp) {
+                        title.innerText = "EMBAUCHÉ !"; title.className = "result-title win";
+                        msg.innerText = "Excellent ! Votre score est supérieur à celui du recruteur.";
+                    } else if (this.player.hp < this.enemy.hp) {
+                        title.innerText = "REFUSÉ..."; title.className = "result-title lose";
+                        msg.innerText = "Dommage, le recruteur a eu plus de points que vous.";
+                    } else {
+                        title.innerText = "ÉGALITÉ !"; title.className = "result-title win";
+                        msg.innerText = "Match nul ! Vous avez les mêmes compétences.";
+                    }
+                }
+                
+                setTimeout(() => this.showScreen('scene-gameover'), 1000);
+            },
+            reset: function() { location.reload(); } // Modifié pour reload complet afin de restaurer l'Intro proprement
+        };
+        game.init();
+    </script>
+</body>
+</html>
